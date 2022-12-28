@@ -1,6 +1,7 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from "next";
-import { db } from "../../database";
+import { db, seedDate } from "../../database";
+import { Entry } from "../../models";
 
 type Data = {
   message: string;
@@ -16,6 +17,9 @@ export default async function handler(
       .json({ message: "Can not have access to this endpoint." });
   }
   await db.connect();
+
+  await Entry.deleteMany();
+  await Entry.insertMany(seedDate.entries);
   await db.disconnect();
 
   res.status(200).json({ message: "Task is Done" });
