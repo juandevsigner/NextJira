@@ -1,4 +1,5 @@
-import React, { ChangeEvent, useMemo, useState } from "react";
+import React, { ChangeEvent, FC, useContext, useMemo, useState } from "react";
+import { GetServerSideProps } from "next";
 import {
   Button,
   Card,
@@ -17,14 +18,24 @@ import {
 } from "@mui/material";
 import { Layout } from "../../components/layouts";
 import { DeleteOutline, SaveOutlined } from "@mui/icons-material";
-import { EntryStatus } from "../../interfaces";
+import { Entry, EntryStatus } from "../../interfaces";
+import { dbEntries } from "../../database";
+import { EntriesContext } from "../../context";
+import { useRouter } from "next/router";
+import { dateFunctions } from "../../utils";
 
 const validStatus: EntryStatus[] = ["pending", "in-progress", "finished"];
 
-const EntryPage = () => {
-  const [inputValue, setInputValue] = useState("");
-  const [status, setStatus] = useState<EntryStatus>("pending");
+interface Props {
+  entry: Entry;
+}
+
+const EntryPage: FC<Props> = ({ entry }) => {
+  const [inputValue, setInputValue] = useState(entry.description);
+  const [status, setStatus] = useState<EntryStatus>(entry.status);
   const [touched, setTouched] = useState(false);
+  const { updateEntry } = useContext(EntriesContext);
+  const router = useRouter();
 
   const isNotValid = useMemo(
     () => inputValue.length <= 0 && touched,
@@ -40,17 +51,27 @@ const EntryPage = () => {
   };
 
   const onSave = () => {
-    console.log({ inputValue, status });
+    if (inputValue.trim().length < 0) return;
+    const updatedEntry: Entry = {
+      ...entry,
+      status,
+      description: inputValue,
+    };
+
+    updateEntry(updatedEntry, true);
+    setTimeout(() => {
+      router.push("/");
+    }, 1000);
   };
 
   return (
-    <Layout title={"..."}>
+    <Layout title={inputValue.substring(0, 20) + "..."}>
       <Grid container sx={{ marginTop: 2 }} justifyContent="center">
         <Grid item xs={12} sm={8} md={6}>
           <Card>
             <CardHeader
-              title={`Entrada: ${inputValue}`}
-              subheader={`Was created ago: ..`}
+              title={`Entrada:`}
+              subheader={dateFunctions.getFormatdDistaceToNow(entry.createdAt)}
             />
             <CardContent>
               <TextField
@@ -107,4 +128,22 @@ const EntryPage = () => {
     </Layout>
   );
 };
+
+export const getServerSideProps: GetServerSideProps = async ({ params }) => {
+  const { id } = params as { id: string };
+  const entry = await dbEntries.getEntryById(id);
+
+  if (!entry) {
+    return {
+      redirect: {
+        destination: "/",
+        permanent: false,
+      },
+    };
+  }
+  return {
+    props: { entry },
+  };
+};
+
 export default EntryPage;

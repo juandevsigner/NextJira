@@ -55,6 +55,28 @@ const updateEntry = async (req: NextApiRequest, res: NextApiResponse<Data>) => {
   }
 };
 
+const deleteEntry = async (req: NextApiRequest, res: NextApiResponse<Data>) => {
+  const { id } = req.query;
+  await db.connect();
+  const entryToUpdate = await Entry.findById(id);
+  if (!entryToUpdate) {
+    await db.disconnect();
+    return res.status(400).json({ message: "Entry not found" });
+  }
+
+  try {
+    const updateEntry = await Entry.findByIdAndDelete(id, {
+      runValidators: true,
+      new: true,
+    });
+    res.status(200).json(updateEntry!);
+  } catch (error: any) {
+    await db.disconnect();
+    console.log(error);
+    return res.status(400).json({ message: error.errors.status.message });
+  }
+};
+
 const getEntry = async (req: NextApiRequest, res: NextApiResponse<Data>) => {
   await db.connect();
   const { id } = req.query;
